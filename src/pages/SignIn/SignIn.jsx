@@ -56,9 +56,9 @@ const SignIn = () => {
       if (perfil && perfil.rol === "docente") {
         // Redirige a la ruta asignada para el componente Docente.jsx
         navigate("/docente");
-      } else {
-        // Redirección por defecto si tiene otro rol (ej. estudiante, admin, etc.)
-        navigate("/dashboard");
+      }
+      if (perfil && perfil.rol === "administrador") {
+        navigate("/administrador");
       }
     } catch (err) {
       setError(

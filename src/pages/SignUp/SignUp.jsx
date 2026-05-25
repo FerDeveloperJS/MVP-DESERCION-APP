@@ -169,8 +169,8 @@ const SignUp = () => {
                 <option value="estudiante">Estudiante</option>
                 <option value="docente">Docente</option>
                 <option value="coordinador">Coordinador Académico</option>
-                <option value="psicologia">Psicología y Bienestar</option>
-                <option value="admin">Administrador</option>
+                <option value="psicologo">Psicología y Bienestar</option>
+                <option value="administrador">Administrador</option>
               </select>
             </div>
 
