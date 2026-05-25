@@ -250,3 +250,30 @@ form {
     padding: 14px;
   }
 }
+
+.auth-alert {
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.error-message {
+  background-color: #fce8e6;
+  color: #a8071a;
+  border: 1px solid #f5222d;
+}
+
+.success-message {
+  background-color: #f6ffed;
+  color: #237804;
+  border: 1px solid #52c41a;
+}
+
+/* Deshabilita visualmente el botón mientras carga */
+.register-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
