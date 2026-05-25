@@ -60,6 +60,9 @@ const SignIn = () => {
       if (perfil && perfil.rol === "administrador") {
         navigate("/administrador");
       }
+      if (perfil && perfil.rol === "estudiante") {
+        navigate("/estudiante");
+      }
     } catch (err) {
       setError(
         err.message || "Error al intentar iniciar sesión. Verifica tus datos.",

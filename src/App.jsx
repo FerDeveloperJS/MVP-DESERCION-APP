@@ -5,6 +5,7 @@ import SignIn from "./pages/SignIn/SignIn.jsx";
 import "./App.css";
 import Docente from "./pages/Docente/Docente.jsx";
 import Administrador from "./pages/Administrador/Administrador.jsx";
+import Estudiante from "./pages/Estudiante/Estudiante.jsx";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/docente" element={<Docente />} />
         <Route path="/administrador" element={<Administrador />} />
+        <Route path="/estudiante" element={<Estudiante />} />
       </Routes>
     </BrowserRouter>
   );
