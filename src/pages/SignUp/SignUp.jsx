@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import "./SignUp.css";
 
 const SignUp = () => {
@@ -127,7 +128,7 @@ const SignUp = () => {
           </form>
 
           <div className="bottom-text">
-            ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
+            ¿Ya tienes cuenta? <Link to="/">Iniciar Sesion</Link>
           </div>
         </div>
       </div>
