@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // <-- Añadimos useNavigate para redirigir
-import { supabase } from "../../supabaseClient.js"; // <-- Ajusta la ruta de tu cliente de Supabase
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../../supabaseClient.js";
 import "./SignIn.css";
 
 const SignIn = () => {
@@ -13,7 +13,7 @@ const SignIn = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const navigate = useNavigate(); // Hook para navegar tras el login exitoso
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
@@ -28,7 +28,7 @@ const SignIn = () => {
     setError(null);
 
     try {
-      // Iniciar sesión con Supabase Auth
+      // 1. Iniciar sesión con Supabase Auth
       const { data, error: signInError } =
         await supabase.auth.signInWithPassword({
           email: formData.correo,
@@ -37,13 +37,30 @@ const SignIn = () => {
 
       if (signInError) throw signInError;
 
-      // ¡Inicio de sesión exitoso!
-      console.log("Usuario autenticado:", data.user);
+      // ¡Inicio de sesión exitoso en Auth!
+      const user = data.user;
+      console.log("Usuario autenticado:", user);
 
-      // Aquí lo rediriges a la ruta protegida de tu app (ej. /dashboard o /home)
-      navigate("/dashboard");
+      // 2. Consultar el rol del usuario en tu tabla de la base de datos
+      // NOTA: Asegúrate de que el nombre de la tabla ('usuarios') y la columna ('rol') coincidan con tu DB.
+      const { data: perfil, error: perfilError } = await supabase
+        .from("usuarios")
+        .select("rol")
+        .eq("id", user.id)
+        .single(); // Trae un solo registro
+
+      if (perfilError)
+        throw new Error("No se pudo verificar el rol del usuario.");
+
+      // 3. Redirección condicional según el rol
+      if (perfil && perfil.rol === "docente") {
+        // Redirige a la ruta asignada para el componente Docente.jsx
+        navigate("/docente");
+      } else {
+        // Redirección por defecto si tiene otro rol (ej. estudiante, admin, etc.)
+        navigate("/dashboard");
+      }
     } catch (err) {
-      // Captura errores comunes (credenciales inválidas, correo no confirmado, etc.)
       setError(
         err.message || "Error al intentar iniciar sesión. Verifica tus datos.",
       );
