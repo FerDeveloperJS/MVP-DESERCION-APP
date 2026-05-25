@@ -1,0 +1,252 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  background: #f5f6fa;
+}
+
+.register-page {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* =========================
+   PANEL IZQUIERDO
+========================= */
+
+.left-panel {
+  width: 40%;
+  background: linear-gradient(180deg, #4f46e5, #312e81);
+  color: white;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.logo-section h1 {
+  font-size: 48px;
+  margin-top: 20px;
+  font-weight: 700;
+}
+
+.logo-section p {
+  margin-top: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 320px;
+}
+
+.logo-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.left-info h2 {
+  font-size: 34px;
+  margin-bottom: 15px;
+  line-height: 1.2;
+}
+
+.left-info p {
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.7;
+  max-width: 400px;
+}
+
+/* =========================
+   PANEL DERECHO
+========================= */
+
+.right-panel {
+  width: 60%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.register-box {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+  padding: 45px;
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.register-header {
+  margin-bottom: 30px;
+}
+
+.register-header h2 {
+  font-size: 34px;
+  color: #111827;
+  margin-bottom: 10px;
+}
+
+.register-header p {
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* =========================
+   FORMULARIO
+========================= */
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* INPUTS Y SELECT */
+
+.input-group input,
+.input-group select {
+  padding: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  outline: none;
+  transition: 0.3s;
+  font-size: 15px;
+  background: #f9fafb;
+  color: #111827;
+}
+
+/* EFECTO FOCUS */
+
+.input-group input:focus,
+.input-group select:focus {
+  border-color: #4f46e5;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+/* SELECT CUSTOM */
+
+.input-group select {
+  appearance: none;
+  cursor: pointer;
+}
+
+/* BOTÓN */
+
+.register-btn {
+  margin-top: 10px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.register-btn:hover {
+  background: #4338ca;
+  transform: translateY(-1px);
+}
+
+/* FOOTER */
+
+.bottom-text {
+  margin-top: 25px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.bottom-text a {
+  color: #4f46e5;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.bottom-text a:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 900px) {
+  .register-page {
+    flex-direction: column;
+  }
+
+  .left-panel {
+    width: 100%;
+    padding: 40px;
+    gap: 40px;
+  }
+
+  .right-panel {
+    width: 100%;
+    padding: 20px;
+  }
+
+  .register-box {
+    padding: 30px;
+  }
+
+  .logo-section h1 {
+    font-size: 40px;
+  }
+
+  .left-info h2 {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 500px) {
+  .left-panel {
+    padding: 30px;
+  }
+
+  .register-box {
+    padding: 25px;
+    border-radius: 18px;
+  }
+
+  .register-header h2 {
+    font-size: 28px;
+  }
+
+  .input-group input,
+  .input-group select {
+    padding: 14px;
+  }
+
+  .register-btn {
+    padding: 14px;
+  }
+}
