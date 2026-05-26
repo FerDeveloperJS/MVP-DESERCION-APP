@@ -5,136 +5,533 @@ import "./VerCurso.css";
 /* ─────────────────────────────────────────────
    TAB: ESTUDIANTES
 ───────────────────────────────────────────── */
-const TabEstudiantes = ({ curso, estudiantes, cargando, recargar }) => {
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [form, setForm] = useState({
-    nombre_completo: "",
-    email: "",
-    numero_documento: "",
-  });
-  const [mensaje, setMensaje] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
-
-  const handleAgregar = async () => {
-    setGuardando(true);
-    setMensaje(null);
-    const { email, nombre_completo, numero_documento } = form;
-
-    if (!email || !nombre_completo || !numero_documento) {
-      setMensaje({
-        tipo: "error",
-        texto: "Por favor completa todos los campos.",
-      });
-      setGuardando(false);
-      return;
-    }
-
-    try {
-      const { data: existente } = await supabase
-        .from("usuarios")
-        .select("*")
-        .eq("email", email)
-        .maybeSingle();
-
-      let estudianteId;
-      if (existente) {
-        estudianteId = existente.id;
-      } else {
-        const { data: nuevo, error } = await supabase
-          .from("usuarios")
-          .insert([
-            { nombre_completo, email, numero_documento, rol: "estudiante" },
-          ])
-          .select()
-          .single();
-        if (error) throw error;
-        estudianteId = nuevo.id;
-      }
-
-      const { data: ya } = await supabase
-        .from("matriculas")
-        .select("id")
-        .eq("curso_id", curso.id)
-        .eq("estudiante_id", estudianteId)
-        .maybeSingle();
-
-      if (ya) {
-        setMensaje({
-          tipo: "error",
-          texto: "Este estudiante ya está matriculado.",
-        });
-        setGuardando(false);
-        return;
-      }
-
-      const { error: err } = await supabase
-        .from("matriculas")
-        .insert([{ curso_id: curso.id, estudiante_id: estudianteId }]);
-      if (err) throw err;
-
-      setMensaje({
-        tipo: "exito",
-        texto: "¡Estudiante agregado correctamente!",
-      });
-      setForm({ nombre_completo: "", email: "", numero_documento: "" });
-      recargar();
-    } catch (err) {
-      console.error(err);
-      setMensaje({
-        tipo: "error",
-        texto: "Ocurrió un error. Intenta nuevamente.",
-      });
-    }
-    setGuardando(false);
-  };
-
-  const cerrar = () => {
-    setModalAbierto(false);
-    setMensaje(null);
-    setForm({ nombre_completo: "", email: "", numero_documento: "" });
-  };
-
+const TabEstudiantes = ({ estudiantes, cargando }) => {
   return (
     <>
       <div className="tab-header-actions">
         <h3>Estudiantes matriculados</h3>
-        <button className="btn-agregar" onClick={() => setModalAbierto(true)}>
-          + Agregar estudiante
-        </button>
       </div>
 
       <div className="tabla-wrapper">
         {cargando ? (
           <p className="estado-msg">Cargando estudiantes...</p>
         ) : estudiantes.length === 0 ? (
-          <p className="sin-estudiantes">
-            No hay estudiantes matriculados aún.
-          </p>
+          <p className="sin-estudiantes">No hay estudiantes matriculados.</p>
         ) : (
           <table className="tabla-estudiantes">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Nombre completo</th>
+                <th>Nombre</th>
                 <th>Email</th>
-                <th>N° Documento</th>
-                <th>Rol</th>
+                <th>Documento</th>
               </tr>
             </thead>
+
             <tbody>
               {estudiantes.map((m, i) => (
                 <tr key={m.id}>
                   <td>{i + 1}</td>
+
                   <td>{m.usuarios?.nombre_completo}</td>
+
                   <td>{m.usuarios?.email}</td>
+
                   <td>{m.usuarios?.numero_documento}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   TAB: NOTAS
+───────────────────────────────────────────── */
+const TabNotas = ({ estudiantes }) => {
+  const [promedios, setPromedios] = useState({});
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    cargarPromedios();
+  }, []);
+
+  const cargarPromedios = async () => {
+    setCargando(true);
+
+    try {
+      const ids = estudiantes.map((e) => e.estudiante_id);
+
+      const { data, error } = await supabase
+        .from("notas")
+        .select("estudiante_id, nota")
+        .in("estudiante_id", ids);
+
+      if (error) {
+        console.error(error);
+        setCargando(false);
+        return;
+      }
+
+      const mapa = {};
+
+      ids.forEach((id) => {
+        const notasEst = data.filter((n) => n.estudiante_id === id);
+
+        if (!notasEst.length) {
+          mapa[id] = 0;
+          return;
+        }
+
+        const suma = notasEst.reduce((acc, n) => acc + Number(n.nota), 0);
+
+        mapa[id] = suma / notasEst.length;
+      });
+
+      setPromedios(mapa);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setCargando(false);
+  };
+
+  return (
+    <>
+      <div className="tab-header-actions">
+        <h3>Notas</h3>
+      </div>
+
+      <div className="tabla-wrapper">
+        {cargando ? (
+          <p className="estado-msg">Cargando notas...</p>
+        ) : (
+          <table className="tabla-estudiantes">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Promedio</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {estudiantes.map((m) => (
+                <tr key={m.id}>
+                  <td>{m.usuarios?.nombre_completo}</td>
+
+                  <td>{(promedios[m.estudiante_id] || 0).toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   TAB: ASISTENCIA
+───────────────────────────────────────────── */
+const TabAsistencia = ({ estudiantes }) => {
+  const [porcentajes, setPorcentajes] = useState({});
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    cargarAsistencias();
+  }, []);
+
+  const cargarAsistencias = async () => {
+    setCargando(true);
+
+    try {
+      const ids = estudiantes.map((e) => e.estudiante_id);
+
+      const { data, error } = await supabase
+        .from("asistencias")
+        .select("estudiante_id, estado")
+        .in("estudiante_id", ids);
+
+      if (error) {
+        console.error(error);
+        setCargando(false);
+        return;
+      }
+
+      const mapa = {};
+
+      ids.forEach((id) => {
+        const asistenciasEst = data.filter((a) => a.estudiante_id === id);
+
+        if (!asistenciasEst.length) {
+          mapa[id] = 0;
+          return;
+        }
+
+        const presentes = asistenciasEst.filter(
+          (a) => a.estado === "presente",
+        ).length;
+
+        const porcentaje = (presentes / asistenciasEst.length) * 100;
+
+        mapa[id] = porcentaje;
+      });
+
+      setPorcentajes(mapa);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setCargando(false);
+  };
+
+  return (
+    <>
+      <div className="tab-header-actions">
+        <h3>Asistencia</h3>
+      </div>
+
+      <div className="tabla-wrapper">
+        {cargando ? (
+          <p className="estado-msg">Cargando asistencia...</p>
+        ) : (
+          <table className="tabla-estudiantes">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Asistencia</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {estudiantes.map((m) => (
+                <tr key={m.id}>
+                  <td>{m.usuarios?.nombre_completo}</td>
+
+                  <td>{Math.round(porcentajes[m.estudiante_id] || 0)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   TAB: RIESGO
+───────────────────────────────────────────── */
+const TabRiesgo = ({ estudiantes }) => {
+  const [promedios, setPromedios] = useState({});
+  const [asistencias, setAsistencias] = useState({});
+  const [cargando, setCargando] = useState(true);
+
+  /* MODALES */
+  const [modalEncuestas, setModalEncuestas] = useState(false);
+  const [modalDetalle, setModalDetalle] = useState(false);
+
+  /* DATA */
+  const [estudianteSeleccionado, setEstudianteSeleccionado] = useState(null);
+
+  const [encuestasRespondidas, setEncuestasRespondidas] = useState([]);
+
+  const [detalleEncuesta, setDetalleEncuesta] = useState([]);
+
+  const [encuestaSeleccionada, setEncuestaSeleccionada] = useState(null);
+
+  const [cargandoEncuestas, setCargandoEncuestas] = useState(false);
+
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    setCargando(true);
+
+    try {
+      const ids = estudiantes.map((e) => e.estudiante_id);
+
+      /* NOTAS */
+      const { data: notasData } = await supabase
+        .from("notas")
+        .select("estudiante_id, nota")
+        .in("estudiante_id", ids);
+
+      const mapaProm = {};
+
+      ids.forEach((id) => {
+        const notasEst = notasData.filter((n) => n.estudiante_id === id);
+
+        if (!notasEst.length) {
+          mapaProm[id] = 0;
+          return;
+        }
+
+        const suma = notasEst.reduce((acc, n) => acc + Number(n.nota), 0);
+
+        mapaProm[id] = suma / notasEst.length;
+      });
+
+      setPromedios(mapaProm);
+
+      /* ASISTENCIAS */
+      const { data: asisData } = await supabase
+        .from("asistencias")
+        .select("estudiante_id, estado")
+        .in("estudiante_id", ids);
+
+      const mapaAsis = {};
+
+      ids.forEach((id) => {
+        const asistenciasEst = asisData.filter((a) => a.estudiante_id === id);
+
+        if (!asistenciasEst.length) {
+          mapaAsis[id] = 0;
+          return;
+        }
+
+        const presentes = asistenciasEst.filter(
+          (a) => a.estado === "presente",
+        ).length;
+
+        mapaAsis[id] = (presentes / asistenciasEst.length) * 100;
+      });
+
+      setAsistencias(mapaAsis);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setCargando(false);
+  };
+
+  /* ─────────────────────────────
+     ABRIR ENCUESTAS
+  ───────────────────────────── */
+  const abrirEncuestas = async (estudiante) => {
+    setEstudianteSeleccionado(estudiante);
+
+    setModalEncuestas(true);
+
+    setCargandoEncuestas(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("respuestas_encuesta")
+        .select(
+          `
+          id,
+          fecha,
+          encuesta_id,
+          encuestas (
+            id,
+            titulo
+          )
+        `,
+        )
+        .eq("estudiante_id", estudiante.estudiante_id)
+        .order("fecha", { ascending: false });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setEncuestasRespondidas(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setCargandoEncuestas(false);
+  };
+
+  /* ─────────────────────────────
+     ABRIR DETALLE
+  ───────────────────────────── */
+  const abrirDetalleEncuesta = async (respuestaEncuesta) => {
+    setEncuestaSeleccionada(respuestaEncuesta);
+
+    setModalDetalle(true);
+
+    setCargandoDetalle(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("respuestas_detalle")
+        .select(
+          `
+          id,
+          respuesta,
+          preguntas (
+            pregunta
+          )
+        `,
+        )
+        .eq("respuesta_encuesta_id", respuestaEncuesta.id);
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setDetalleEncuesta(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+
+    setCargandoDetalle(false);
+  };
+
+  const cerrarEncuestas = () => {
+    setModalEncuestas(false);
+
+    setEncuestasRespondidas([]);
+
+    setEstudianteSeleccionado(null);
+  };
+
+  const cerrarDetalle = () => {
+    setModalDetalle(false);
+
+    setDetalleEncuesta([]);
+
+    setEncuestaSeleccionada(null);
+  };
+
+  const dataRiesgo = estudiantes.map((m) => {
+    const promedio = promedios[m.estudiante_id] || 0;
+
+    const asistencia = asistencias[m.estudiante_id] || 0;
+
+    let riesgoNotas = 0;
+
+    if (promedio >= 4) {
+      riesgoNotas = 0;
+    } else if (promedio >= 3) {
+      riesgoNotas = 10;
+    } else if (promedio >= 2) {
+      riesgoNotas = 25;
+    } else {
+      riesgoNotas = 40;
+    }
+
+    let riesgoAsistencia = 0;
+
+    if (asistencia >= 90) {
+      riesgoAsistencia = 0;
+    } else if (asistencia >= 75) {
+      riesgoAsistencia = 10;
+    } else if (asistencia >= 50) {
+      riesgoAsistencia = 25;
+    } else {
+      riesgoAsistencia = 40;
+    }
+
+    const riesgoTotal = riesgoNotas + riesgoAsistencia;
+
+    let nivel = "Bajo";
+
+    if (riesgoTotal >= 60) {
+      nivel = "Alto";
+    } else if (riesgoTotal >= 30) {
+      nivel = "Medio";
+    }
+
+    return {
+      estudiante: m.usuarios?.nombre_completo,
+      estudiante_id: m.estudiante_id,
+      promedio: promedio.toFixed(1),
+      asistencia: Math.round(asistencia),
+      riesgo: riesgoTotal,
+      nivel,
+    };
+  });
+
+  const totalAltos = dataRiesgo.filter((e) => e.nivel === "Alto").length;
+
+  const totalMedios = dataRiesgo.filter((e) => e.nivel === "Medio").length;
+
+  const totalBajos = dataRiesgo.filter((e) => e.nivel === "Bajo").length;
+
+  return (
+    <>
+      <div className="tab-header-actions">
+        <h3>Análisis de riesgo de deserción</h3>
+      </div>
+
+      {/* RESUMEN */}
+      <div className="riesgo-resumen">
+        <div className="riesgo-card riesgo-alto">
+          <h4>🔴 Alto riesgo</h4>
+          <span>{totalAltos}</span>
+        </div>
+
+        <div className="riesgo-card riesgo-medio">
+          <h4>🟠 Riesgo medio</h4>
+          <span>{totalMedios}</span>
+        </div>
+
+        <div className="riesgo-card riesgo-bajo">
+          <h4>🟢 Bajo riesgo</h4>
+          <span>{totalBajos}</span>
+        </div>
+      </div>
+
+      {/* TABLA */}
+      <div className="tabla-wrapper">
+        {cargando ? (
+          <p className="estado-msg">Calculando riesgo...</p>
+        ) : (
+          <table className="tabla-estudiantes">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Promedio</th>
+                <th>Asistencia</th>
+                <th>Puntaje riesgo</th>
+                <th>Nivel</th>
+                <th>Encuestas</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {dataRiesgo.map((e, i) => (
+                <tr key={i}>
+                  <td>{e.estudiante}</td>
+
+                  <td>{e.promedio}</td>
+
+                  <td>{e.asistencia}%</td>
+
+                  <td>{e.riesgo}</td>
+
                   <td>
-                    <span className={`badge badge-${m.usuarios?.rol}`}>
-                      {m.usuarios?.rol}
+                    <span
+                      className={`riesgo-badge ${
+                        e.nivel === "Alto"
+                          ? "badge-riesgo-alto"
+                          : e.nivel === "Medio"
+                            ? "badge-riesgo-medio"
+                            : "badge-riesgo-bajo"
+                      }`}
+                    >
+                      {e.nivel}
                     </span>
+                  </td>
+
+                  <td>
+                    <button
+                      className="btn-ver-encuestas"
+                      onClick={() => abrirEncuestas(e)}
+                    >
+                      👁 Ver encuestas
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -143,672 +540,86 @@ const TabEstudiantes = ({ curso, estudiantes, cargando, recargar }) => {
         )}
       </div>
 
-      {modalAbierto && (
-        <div className="modal-overlay" onClick={cerrar}>
+      {/* MODAL ENCUESTAS */}
+      {modalEncuestas && (
+        <div className="modal-overlay" onClick={cerrarEncuestas}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Agregar estudiante</h2>
-              <button className="modal-close" onClick={cerrar}>
+              <h2>Encuestas respondidas</h2>
+
+              <button className="modal-close" onClick={cerrarEncuestas}>
                 ✕
               </button>
             </div>
-            <p className="modal-subtitulo">
-              Si el estudiante ya existe por email, solo se matriculará al
-              curso.
-            </p>
-            <div className="modal-form">
-              <label>Nombre completo *</label>
-              <input
-                name="nombre_completo"
-                value={form.nombre_completo}
-                onChange={handleChange}
-                placeholder="Ej: María López"
-              />
-              <label>Email *</label>
-              <input
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="Ej: maria@correo.com"
-              />
-              <label>Número de documento *</label>
-              <input
-                name="numero_documento"
-                value={form.numero_documento}
-                onChange={handleChange}
-                placeholder="Ej: 1001234567"
-              />
-            </div>
-            {mensaje && (
-              <p className={`modal-mensaje ${mensaje.tipo}`}>{mensaje.texto}</p>
-            )}
-            <div className="modal-actions">
-              <button className="btn-cancelar" onClick={cerrar}>
-                Cancelar
-              </button>
-              <button
-                className="btn-guardar"
-                onClick={handleAgregar}
-                disabled={guardando}
-              >
-                {guardando ? "Guardando..." : "Agregar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
 
-/* ─────────────────────────────────────────────
-   TAB: NOTAS
-───────────────────────────────────────────── */
-const TabNotas = ({ curso, estudiantes }) => {
-  const [actividades, setActividades] = useState([]);
-  const [notas, setNotas] = useState({});
-  const [cargando, setCargando] = useState(true);
-  const [modalActividad, setModalActividad] = useState(false);
-  const [formAct, setFormAct] = useState({
-    nombre: "",
-    descripcion: "",
-    porcentaje: "",
-  });
-  const [guardandoAct, setGuardandoAct] = useState(false);
-  const [mensajeAct, setMensajeAct] = useState(null);
-  const [guardandoNotas, setGuardandoNotas] = useState(false);
-  const [mensajeNotas, setMensajeNotas] = useState(null);
-
-  const cargarDatos = async () => {
-    setCargando(true);
-    const { data: acts } = await supabase
-      .from("actividades")
-      .select("*")
-      .eq("curso_id", curso.id)
-      .order("created_at");
-
-    if (!acts?.length) {
-      setActividades([]);
-      setCargando(false);
-      return;
-    }
-    setActividades(acts);
-
-    const actIds = acts.map((a) => a.id);
-    const { data: notasData } = await supabase
-      .from("notas")
-      .select("*")
-      .in("actividad_id", actIds);
-
-    const mapa = {};
-    notasData?.forEach((n) => {
-      mapa[`${n.actividad_id}_${n.estudiante_id}`] = n.nota ?? "";
-    });
-    setNotas(mapa);
-    setCargando(false);
-  };
-
-  useEffect(() => {
-    cargarDatos();
-  }, [curso.id]);
-
-  const handleCrearActividad = async () => {
-    setGuardandoAct(true);
-    setMensajeAct(null);
-    if (!formAct.nombre) {
-      setMensajeAct({ tipo: "error", texto: "El nombre es obligatorio." });
-      setGuardandoAct(false);
-      return;
-    }
-    const { error } = await supabase.from("actividades").insert([
-      {
-        curso_id: curso.id,
-        nombre: formAct.nombre,
-        descripcion: formAct.descripcion,
-        porcentaje: formAct.porcentaje || null,
-      },
-    ]);
-    if (error) {
-      setMensajeAct({ tipo: "error", texto: "Error al crear actividad." });
-    } else {
-      setMensajeAct({ tipo: "exito", texto: "Actividad creada." });
-      setFormAct({ nombre: "", descripcion: "", porcentaje: "" });
-      cargarDatos();
-    }
-    setGuardandoAct(false);
-  };
-
-  const handleNotaChange = (actId, estId, valor) => {
-    setNotas((prev) => ({ ...prev, [`${actId}_${estId}`]: valor }));
-  };
-
-  const handleGuardarNotas = async () => {
-    setGuardandoNotas(true);
-    setMensajeNotas(null);
-
-    const upserts = [];
-    actividades.forEach((act) => {
-      estudiantes.forEach((m) => {
-        const key = `${act.id}_${m.estudiante_id}`;
-        const nota = notas[key];
-        if (nota !== "" && nota !== undefined) {
-          upserts.push({
-            actividad_id: act.id,
-            estudiante_id: m.estudiante_id,
-            nota: parseFloat(nota),
-          });
-        }
-      });
-    });
-
-    if (!upserts.length) {
-      setMensajeNotas({ tipo: "error", texto: "No hay notas para guardar." });
-      setGuardandoNotas(false);
-      return;
-    }
-
-    const { error } = await supabase
-      .from("notas")
-      .upsert(upserts, { onConflict: "actividad_id,estudiante_id" });
-
-    if (error) {
-      console.error(error);
-      setMensajeNotas({ tipo: "error", texto: "Error al guardar notas." });
-    } else {
-      setMensajeNotas({
-        tipo: "exito",
-        texto: "¡Notas guardadas correctamente!",
-      });
-    }
-    setGuardandoNotas(false);
-  };
-
-  const promedioEstudiante = (estudianteId) => {
-    let suma = 0,
-      totalPeso = 0;
-    actividades.forEach((act) => {
-      const nota = parseFloat(notas[`${act.id}_${estudianteId}`]);
-      if (!isNaN(nota)) {
-        const peso = parseFloat(act.porcentaje) || 0;
-        suma += nota * (peso / 100);
-        totalPeso += peso;
-      }
-    });
-    return totalPeso > 0 ? suma.toFixed(2) : "-";
-  };
-
-  const cerrarModalAct = () => {
-    setModalActividad(false);
-    setMensajeAct(null);
-    setFormAct({ nombre: "", descripcion: "", porcentaje: "" });
-  };
-
-  return (
-    <>
-      <div className="tab-header-actions">
-        <h3>Registro de notas</h3>
-        <button className="btn-agregar" onClick={() => setModalActividad(true)}>
-          + Nueva actividad
-        </button>
-      </div>
-
-      {cargando ? (
-        <p className="estado-msg">Cargando notas...</p>
-      ) : actividades.length === 0 ? (
-        <p className="sin-estudiantes">
-          No hay actividades creadas. Crea una para empezar.
-        </p>
-      ) : estudiantes.length === 0 ? (
-        <p className="sin-estudiantes">No hay estudiantes matriculados.</p>
-      ) : (
-        <>
-          <div className="tabla-wrapper tabla-scroll">
-            <table className="tabla-estudiantes tabla-notas">
-              <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  {actividades.map((a) => (
-                    <th key={a.id}>
-                      {a.nombre}
-                      {a.porcentaje ? (
-                        <span className="badge-pct">{a.porcentaje}%</span>
-                      ) : (
-                        ""
-                      )}
-                    </th>
-                  ))}
-                  <th>Promedio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {estudiantes.map((m) => (
-                  <tr key={m.id}>
-                    <td className="td-nombre">{m.usuarios?.nombre_completo}</td>
-                    {actividades.map((act) => (
-                      <td key={act.id}>
-                        <input
-                          className="input-nota"
-                          type="number"
-                          min="0"
-                          max="5"
-                          step="0.1"
-                          value={notas[`${act.id}_${m.estudiante_id}`] ?? ""}
-                          onChange={(e) =>
-                            handleNotaChange(
-                              act.id,
-                              m.estudiante_id,
-                              e.target.value,
-                            )
-                          }
-                          placeholder="—"
-                        />
-                      </td>
-                    ))}
-                    <td className="td-promedio">
-                      {promedioEstudiante(m.estudiante_id)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {mensajeNotas && (
-            <p className={`modal-mensaje ${mensajeNotas.tipo}`}>
-              {mensajeNotas.texto}
-            </p>
-          )}
-          <div className="notas-footer">
-            <button
-              className="btn-guardar"
-              onClick={handleGuardarNotas}
-              disabled={guardandoNotas}
-            >
-              {guardandoNotas ? "Guardando..." : "💾 Guardar notas"}
-            </button>
-          </div>
-        </>
-      )}
-
-      {modalActividad && (
-        <div className="modal-overlay" onClick={cerrarModalAct}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Nueva actividad</h2>
-              <button className="modal-close" onClick={cerrarModalAct}>
-                ✕
-              </button>
-            </div>
-            <div className="modal-form">
-              <label>Nombre *</label>
-              <input
-                value={formAct.nombre}
-                onChange={(e) =>
-                  setFormAct({ ...formAct, nombre: e.target.value })
-                }
-                placeholder="Ej: Parcial 1, Taller Final..."
-              />
-              <label>Descripción</label>
-              <input
-                value={formAct.descripcion}
-                onChange={(e) =>
-                  setFormAct({ ...formAct, descripcion: e.target.value })
-                }
-                placeholder="Opcional"
-              />
-              <label>Porcentaje (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={formAct.porcentaje}
-                onChange={(e) =>
-                  setFormAct({ ...formAct, porcentaje: e.target.value })
-                }
-                placeholder="Ej: 30"
-              />
-            </div>
-            {mensajeAct && (
-              <p className={`modal-mensaje ${mensajeAct.tipo}`}>
-                {mensajeAct.texto}
+            <div style={{ marginTop: "20px" }}>
+              <p>
+                <strong>Estudiante:</strong>{" "}
+                {estudianteSeleccionado?.estudiante}
               </p>
-            )}
-            <div className="modal-actions">
-              <button className="btn-cancelar" onClick={cerrarModalAct}>
-                Cancelar
-              </button>
-              <button
-                className="btn-guardar"
-                onClick={handleCrearActividad}
-                disabled={guardandoAct}
-              >
-                {guardandoAct ? "Guardando..." : "Crear"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
 
-/* ─────────────────────────────────────────────
-   TAB: ASISTENCIA
-───────────────────────────────────────────── */
-const TabAsistencia = ({ curso, estudiantes }) => {
-  const [sesiones, setSesiones] = useState([]);
-  const [sesionActiva, setSesionActiva] = useState(null);
-  const [asistencias, setAsistencias] = useState({});
-  const [cargando, setCargando] = useState(true);
-  const [cargandoLista, setCargandoLista] = useState(false);
-  const [modalSesion, setModalSesion] = useState(false);
-  const [formSes, setFormSes] = useState({ fecha: "", tema: "" });
-  const [guardandoSes, setGuardandoSes] = useState(false);
-  const [mensajeSes, setMensajeSes] = useState(null);
-  const [guardandoAsis, setGuardandoAsis] = useState(false);
-  const [mensajeAsis, setMensajeAsis] = useState(null);
-
-  const cargarSesiones = async () => {
-    setCargando(true);
-    const { data } = await supabase
-      .from("sesiones")
-      .select("*")
-      .eq("curso_id", curso.id)
-      .order("fecha", { ascending: false });
-    setSesiones(data || []);
-    setCargando(false);
-  };
-
-  useEffect(() => {
-    cargarSesiones();
-  }, [curso.id]);
-
-  const seleccionarSesion = async (sesion) => {
-    setSesionActiva(sesion);
-    setMensajeAsis(null);
-    setCargandoLista(true);
-
-    const { data } = await supabase
-      .from("asistencias")
-      .select("*")
-      .eq("sesion_id", sesion.id);
-
-    const mapa = {};
-    estudiantes.forEach((m) => {
-      mapa[m.estudiante_id] = "ausente";
-    });
-    data?.forEach((a) => {
-      mapa[a.estudiante_id] = a.estado;
-    });
-    setAsistencias(mapa);
-    setCargandoLista(false);
-  };
-
-  const handleCrearSesion = async () => {
-    setGuardandoSes(true);
-    setMensajeSes(null);
-    if (!formSes.fecha) {
-      setMensajeSes({ tipo: "error", texto: "La fecha es obligatoria." });
-      setGuardandoSes(false);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("sesiones")
-      .insert([
-        { curso_id: curso.id, fecha: formSes.fecha, tema: formSes.tema },
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      setMensajeSes({ tipo: "error", texto: "Error al crear la sesión." });
-    } else {
-      setMensajeSes({ tipo: "exito", texto: "Sesión creada." });
-      setFormSes({ fecha: "", tema: "" });
-      await cargarSesiones();
-      setModalSesion(false);
-      seleccionarSesion(data);
-    }
-    setGuardandoSes(false);
-  };
-
-  const handleGuardarAsistencia = async () => {
-    if (!sesionActiva) return;
-    setGuardandoAsis(true);
-    setMensajeAsis(null);
-
-    const upserts = Object.entries(asistencias).map(([estId, estado]) => ({
-      sesion_id: sesionActiva.id,
-      estudiante_id: estId,
-      estado,
-    }));
-
-    const { error } = await supabase
-      .from("asistencias")
-      .upsert(upserts, { onConflict: "sesion_id,estudiante_id" });
-
-    if (error) {
-      console.error(error);
-      setMensajeAsis({ tipo: "error", texto: "Error al guardar asistencia." });
-    } else {
-      setMensajeAsis({
-        tipo: "exito",
-        texto: "¡Asistencia guardada correctamente!",
-      });
-    }
-    setGuardandoAsis(false);
-  };
-
-  const toggleEstado = (estId) => {
-    const ciclo = {
-      ausente: "presente",
-      presente: "excusa",
-      excusa: "ausente",
-    };
-    setAsistencias((prev) => ({
-      ...prev,
-      [estId]: ciclo[prev[estId]] || "ausente",
-    }));
-  };
-
-  const estadoLabel = {
-    presente: "✅ Presente",
-    ausente: "❌ Ausente",
-    excusa: "⚠️ Excusa",
-  };
-  const estadoClass = {
-    presente: "est-presente",
-    ausente: "est-ausente",
-    excusa: "est-excusa",
-  };
-
-  const cerrarModalSes = () => {
-    setModalSesion(false);
-    setMensajeSes(null);
-    setFormSes({ fecha: "", tema: "" });
-  };
-
-  const resumen = sesionActiva
-    ? {
-        presentes: Object.values(asistencias).filter((e) => e === "presente")
-          .length,
-        ausentes: Object.values(asistencias).filter((e) => e === "ausente")
-          .length,
-        excusas: Object.values(asistencias).filter((e) => e === "excusa")
-          .length,
-      }
-    : null;
-
-  return (
-    <>
-      <div className="tab-header-actions">
-        <h3>Registro de asistencia</h3>
-        <button className="btn-agregar" onClick={() => setModalSesion(true)}>
-          + Nueva sesión
-        </button>
-      </div>
-
-      <div className="asistencia-layout">
-        {/* PANEL IZQUIERDO: lista de sesiones */}
-        <div className="sesiones-panel">
-          <h4 className="panel-title">Sesiones</h4>
-          {cargando ? (
-            <p className="estado-msg">Cargando...</p>
-          ) : sesiones.length === 0 ? (
-            <p className="sin-estudiantes" style={{ fontSize: "0.82rem" }}>
-              Sin sesiones aún.
-            </p>
-          ) : (
-            <ul className="sesiones-list">
-              {sesiones.map((s) => (
-                <li
-                  key={s.id}
-                  className={`sesion-item ${sesionActiva?.id === s.id ? "sesion-activa" : ""}`}
-                  onClick={() => seleccionarSesion(s)}
-                >
-                  <span className="sesion-fecha">{s.fecha}</span>
-                  <span className="sesion-tema">{s.tema || "Sin tema"}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* PANEL DERECHO: lista de asistencia */}
-        <div className="asistencia-panel">
-          {!sesionActiva ? (
-            <div className="empty-state">
-              <span style={{ fontSize: "2.5rem" }}>📅</span>
-              <p>Selecciona una sesión para registrar asistencia</p>
-            </div>
-          ) : cargandoLista ? (
-            <p className="estado-msg">Cargando lista...</p>
-          ) : (
-            <>
-              <div className="asistencia-header">
-                <div>
-                  <h4>{sesionActiva.fecha}</h4>
-                  {sesionActiva.tema && (
-                    <p className="sesion-subtema">{sesionActiva.tema}</p>
-                  )}
-                </div>
-                {resumen && (
-                  <div className="resumen-chips">
-                    <span className="chip chip-verde">
-                      ✅ {resumen.presentes}
-                    </span>
-                    <span className="chip chip-rojo">
-                      ❌ {resumen.ausentes}
-                    </span>
-                    <span className="chip chip-amarillo">
-                      ⚠️ {resumen.excusas}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {estudiantes.length === 0 ? (
-                <p className="sin-estudiantes">
-                  No hay estudiantes matriculados.
+              {cargandoEncuestas ? (
+                <p style={{ marginTop: "20px" }}>Cargando encuestas...</p>
+              ) : encuestasRespondidas.length === 0 ? (
+                <p style={{ marginTop: "20px" }}>
+                  Este estudiante no ha respondido encuestas.
                 </p>
               ) : (
-                <div className="tabla-wrapper">
-                  <table className="tabla-estudiantes">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Estudiante</th>
-                        <th>Estado (clic para cambiar)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {estudiantes.map((m, i) => {
-                        const estado =
-                          asistencias[m.estudiante_id] || "ausente";
-                        return (
-                          <tr key={m.id}>
-                            <td>{i + 1}</td>
-                            <td>{m.usuarios?.nombre_completo}</td>
-                            <td>
-                              <button
-                                className={`btn-estado ${estadoClass[estado]}`}
-                                onClick={() => toggleEstado(m.estudiante_id)}
-                              >
-                                {estadoLabel[estado]}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="lista-encuestas">
+                  {encuestasRespondidas.map((encuesta) => (
+                    <div
+                      key={encuesta.id}
+                      className="encuesta-item"
+                      onClick={() => abrirDetalleEncuesta(encuesta)}
+                    >
+                      <div>
+                        <h4>{encuesta.encuestas?.titulo}</h4>
+
+                        <p>
+                          Respondida el{" "}
+                          {new Date(encuesta.fecha).toLocaleDateString()}
+                        </p>
+                      </div>
+
+                      <span>➡️</span>
+                    </div>
+                  ))}
                 </div>
               )}
-
-              {mensajeAsis && (
-                <p className={`modal-mensaje ${mensajeAsis.tipo}`}>
-                  {mensajeAsis.texto}
-                </p>
-              )}
-              <div className="notas-footer">
-                <button
-                  className="btn-guardar"
-                  onClick={handleGuardarAsistencia}
-                  disabled={guardandoAsis}
-                >
-                  {guardandoAsis ? "Guardando..." : "💾 Guardar asistencia"}
-                </button>
-              </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* MODAL NUEVA SESIÓN */}
-      {modalSesion && (
-        <div className="modal-overlay" onClick={cerrarModalSes}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+      {/* MODAL DETALLE */}
+      {modalDetalle && (
+        <div className="modal-overlay" onClick={cerrarDetalle}>
+          <div
+            className="modal modal-detalle"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-header">
-              <h2>Nueva sesión de clase</h2>
-              <button className="modal-close" onClick={cerrarModalSes}>
+              <h2>{encuestaSeleccionada?.encuestas?.titulo}</h2>
+
+              <button className="modal-close" onClick={cerrarDetalle}>
                 ✕
               </button>
             </div>
-            <div className="modal-form">
-              <label>Fecha *</label>
-              <input
-                type="date"
-                value={formSes.fecha}
-                onChange={(e) =>
-                  setFormSes({ ...formSes, fecha: e.target.value })
-                }
-              />
-              <label>Tema de la clase</label>
-              <input
-                value={formSes.tema}
-                onChange={(e) =>
-                  setFormSes({ ...formSes, tema: e.target.value })
-                }
-                placeholder="Ej: Introducción a React"
-              />
-            </div>
-            {mensajeSes && (
-              <p className={`modal-mensaje ${mensajeSes.tipo}`}>
-                {mensajeSes.texto}
-              </p>
-            )}
-            <div className="modal-actions">
-              <button className="btn-cancelar" onClick={cerrarModalSes}>
-                Cancelar
-              </button>
-              <button
-                className="btn-guardar"
-                onClick={handleCrearSesion}
-                disabled={guardandoSes}
-              >
-                {guardandoSes ? "Guardando..." : "Crear sesión"}
-              </button>
+
+            <div style={{ marginTop: "20px" }}>
+              {cargandoDetalle ? (
+                <p>Cargando respuestas...</p>
+              ) : (
+                <div className="detalle-respuestas">
+                  {detalleEncuesta.map((r) => (
+                    <div key={r.id} className="respuesta-card">
+                      <h4>{r.preguntas?.pregunta}</h4>
+
+                      <p>{r.respuesta}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -822,11 +633,14 @@ const TabAsistencia = ({ curso, estudiantes }) => {
 ───────────────────────────────────────────── */
 const VerCurso = ({ curso, docente, onVolver }) => {
   const [pestana, setPestana] = useState("estudiantes");
+
   const [estudiantes, setEstudiantes] = useState([]);
+
   const [cargando, setCargando] = useState(true);
 
   const cargarEstudiantes = async () => {
     setCargando(true);
+
     const { data: matriculas, error } = await supabase
       .from("matriculas")
       .select("id, estudiante_id")
@@ -839,9 +653,10 @@ const VerCurso = ({ curso, docente, onVolver }) => {
     }
 
     const ids = matriculas.map((m) => m.estudiante_id);
+
     const { data: usuarios } = await supabase
       .from("usuarios")
-      .select("id, nombre_completo, email, numero_documento, rol")
+      .select("id, nombre_completo, email, numero_documento")
       .in("id", ids);
 
     setEstudiantes(
@@ -850,6 +665,7 @@ const VerCurso = ({ curso, docente, onVolver }) => {
         usuarios: usuarios?.find((u) => u.id === m.estudiante_id) || null,
       })),
     );
+
     setCargando(false);
   };
 
@@ -864,20 +680,26 @@ const VerCurso = ({ curso, docente, onVolver }) => {
         <div className="sidebar-top">
           <div className="logo">
             <div className="logo-circle">S</div>
+
             <div>
               <h2>SIEP</h2>
               <p>Docente</p>
             </div>
           </div>
+
           <nav className="menu">
             <button className="menu-item" onClick={onVolver}>
-              <span>📚</span> Mis cursos
+              <span>📚</span>
+              Mis cursos
             </button>
+
             <button className="menu-item active">
-              <span>👥</span> Ver curso
+              <span>👥</span>
+              Ver curso
             </button>
           </nav>
         </div>
+
         <div className="sidebar-bottom">
           <button className="logout-btn" onClick={onVolver}>
             ← Volver
@@ -892,14 +714,14 @@ const VerCurso = ({ curso, docente, onVolver }) => {
             <h1>{curso.nombre}</h1>
             <p>{curso.programa}</p>
           </div>
-          <div className="ver-curso-actions">
-            <div className="teacher-profile">
-              <div className="profile-avatar">
-                {docente?.nombre_completo?.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h4>{docente?.nombre_completo}</h4>
-              </div>
+
+          <div className="teacher-profile">
+            <div className="profile-avatar">
+              {docente?.nombre_completo?.charAt(0).toUpperCase()}
+            </div>
+
+            <div>
+              <h4>{docente?.nombre_completo}</h4>
             </div>
           </div>
         </header>
@@ -907,9 +729,25 @@ const VerCurso = ({ curso, docente, onVolver }) => {
         {/* PESTAÑAS */}
         <div className="tabs-bar">
           {[
-            { id: "estudiantes", label: "👥 Estudiantes" },
-            { id: "notas", label: "📝 Notas" },
-            { id: "asistencia", label: "📅 Asistencia" },
+            {
+              id: "estudiantes",
+              label: "👥 Estudiantes",
+            },
+
+            {
+              id: "notas",
+              label: "📝 Notas",
+            },
+
+            {
+              id: "asistencia",
+              label: "📅 Asistencia",
+            },
+
+            {
+              id: "riesgo",
+              label: "📊 Riesgo",
+            },
           ].map((t) => (
             <button
               key={t.id}
@@ -921,22 +759,19 @@ const VerCurso = ({ curso, docente, onVolver }) => {
           ))}
         </div>
 
-        {/* CONTENIDO POR PESTAÑA */}
+        {/* CONTENIDO */}
         <div className="tab-content">
           {pestana === "estudiantes" && (
-            <TabEstudiantes
-              curso={curso}
-              estudiantes={estudiantes}
-              cargando={cargando}
-              recargar={cargarEstudiantes}
-            />
+            <TabEstudiantes estudiantes={estudiantes} cargando={cargando} />
           )}
-          {pestana === "notas" && (
-            <TabNotas curso={curso} estudiantes={estudiantes} />
-          )}
+
+          {pestana === "notas" && <TabNotas estudiantes={estudiantes} />}
+
           {pestana === "asistencia" && (
-            <TabAsistencia curso={curso} estudiantes={estudiantes} />
+            <TabAsistencia estudiantes={estudiantes} />
           )}
+
+          {pestana === "riesgo" && <TabRiesgo estudiantes={estudiantes} />}
         </div>
       </main>
     </div>

@@ -555,3 +555,105 @@
     height: auto;
   }
 }
+
+/* ─────────────────────────────────────────────
+   TAB RIESGO
+───────────────────────────────────────────── */
+
+.riesgo-resumen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.riesgo-card {
+  background: white;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riesgo-card h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.riesgo-card span {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.riesgo-alto span {
+  color: #dc2626;
+}
+
+.riesgo-medio span {
+  color: #ea580c;
+}
+
+.riesgo-bajo span {
+  color: #16a34a;
+}
+
+/* BADGES */
+
+.riesgo-badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.badge-riesgo-alto {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.badge-riesgo-medio {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.badge-riesgo-bajo {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .riesgo-resumen {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* BOTON VER ENCUESTA */
+
+.btn-ver-encuestas {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.15s;
+}
+
+.btn-ver-encuestas:hover {
+  background: #ddd6fe;
+  transform: translateY(-1px);
+}
+
+.btn-ver-encuestas:active {
+  transform: scale(0.98);
+}
